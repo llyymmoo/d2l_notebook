@@ -1,6 +1,7 @@
 # liuyumin 2023 0524
 
 import torch
+from torch import nn
 import numpy as np
 from IPython import display
 from matplotlib import pyplot as plt
@@ -54,29 +55,71 @@ labels += torch.tensor(np.random.normal(0, 0.01, size=labels.size()))
 # plt.scatter(features[:, 1].numpy(), labels.numpy(), 1)
 # plt.show()
 
+# ----------------------------------------------------------------
+# from scratch
 # train model
-w = torch.tensor(np.random.normal(0, 0.01, (num_input, 1)), dtype=torch.float32)
-b = torch.zeros(1, dtype=torch.float32)
-w.requires_grad_(requires_grad=True)
-b.requires_grad_(requires_grad=True)
+# w = torch.tensor(np.random.normal(0, 0.01, (num_input, 1)), dtype=torch.float32)
+# b = torch.zeros(1, dtype=torch.float32)
+# w.requires_grad_(requires_grad=True)
+# b.requires_grad_(requires_grad=True)
 
+# lr = 0.03
+# batch_size = 10
+# num_epochs = 5
+# net = linreg
+# loss = square_loss
+
+# for epoch in range(num_epochs):
+#     for X, y in data_iter(batch_size, features, labels):
+#         l = loss(net(X, w, b), y).sum()
+#         l.backward()
+#         sgd([w, b], lr, batch_size)
+
+#         w.grad.data.zero_()
+#         b.grad.data.zero_()
+    
+#     train_loss = loss(net(features, w, b), labels)
+#     print('epoch %d, loss %f' % (epoch + 1, train_loss.mean().item()))
+
+# print(w)
+# print(b)
+
+# # concise version
+class LinearRegression(nn.Module):
+    def __init__(self, num_outputs):
+        super(LinearRegression, self).__init__()
+        self.net = nn.LazyLinear(num_outputs)
+    
+    def forward(self, X):
+        return self.net(X)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+num_epochs = 10
 lr = 0.03
-batch_size = 10
-num_epochs = 5
-net = linreg
-loss = square_loss
+batch_size = 16
+
+valid_inputs = features.to(device)
+valid_labels = labels.to(device)
+
+model = LinearRegression(1).to(device)
+loss = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr)
 
 for epoch in range(num_epochs):
     for X, y in data_iter(batch_size, features, labels):
-        l = loss(net(X, w, b), y).sum()
-        l.backward()
-        sgd([w, b], lr, batch_size)
+        X = X.to(device)
+        y = y.to(device)
 
-        w.grad.data.zero_()
-        b.grad.data.zero_()
+        optimizer.zero_grad()
+        outputs = model(X)
+        l = loss(outputs, y)
+        l.backward()
+        optimizer.step()
     
-    train_loss = loss(net(features, w, b), labels)
+    with torch.no_grad():
+        predict = model(valid_inputs)
+        train_loss = loss(predict, valid_labels)
     print('epoch %d, loss %f' % (epoch + 1, train_loss.mean().item()))
 
-print(w)
-print(b)
+for name, param in model.named_parameters():
+    print(f"Layer: {name} | Size: {param.size()} | Values : {param[:2]} \n")
