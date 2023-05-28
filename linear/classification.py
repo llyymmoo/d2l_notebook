@@ -67,14 +67,16 @@ for i in range(num_epoches):
 
     with torch.no_grad():
         error = 0.0
+        num_test = 0
         for x_t, y_t in test_dataloader:
             x_t = x_t.to(device)
             y_t = y_t.to(device)
 
             output_t = model(x_t)
             l_t = loss(output_t, y_t)
-            error += l_t.mean().item()
-        print('epoch %d, loss %f' % (i + 1, error))
+            error += l_t.mean().item() * x_t.size(0)
+            num_test += x_t.size(0)
+        print('epoch %d, loss %f' % (i + 1, error / num_test))
 
 # visualization
 for x_t, y_t in test_dataloader:
